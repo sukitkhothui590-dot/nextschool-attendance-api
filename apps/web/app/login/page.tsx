@@ -2,8 +2,19 @@ import { redirect } from 'next/navigation';
 import { LoginForm } from '@/features/auth/login-form';
 import { getSessionToken } from '@/lib/auth/session';
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>;
+}) {
   if (await getSessionToken()) redirect('/dashboard');
+  const params = await searchParams;
+  const notice =
+    params.message === 'signed-out'
+      ? 'ออกจากระบบเรียบร้อยแล้ว'
+      : params.message === 'expired'
+        ? 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'
+        : null;
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
@@ -20,22 +31,25 @@ export default async function LoginPage() {
             NextSchool
           </p>
           <h1 className="mt-6 max-w-md text-4xl font-bold leading-tight">
-            Attendance
-            <span className="text-orange-400"> Operations</span>
+            ระบบบริหาร
+            <span className="text-orange-400"> การเข้าเรียน</span>
           </h1>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-stone-300">
-            คอนโซลบริหารการเข้าเรียนสำหรับผู้ดูแลโรงเรียน ใช้ REST API เป็นแหล่งความจริง
-            และแสดงผลเพื่อสาธิต workflow หลักอย่างชัดเจน
+            คอนโซลสำหรับผู้ดูแลโรงเรียน ใช้ดูสรุปประจำวัน ค้นหานักเรียน และบันทึกเช็คชื่อ
+            โดยอ้างอิงข้อมูลจาก REST API โดยตรง
           </p>
         </div>
-        <div className="relative grid gap-3 text-sm text-stone-300">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-            เช็คชื่อหลัง 08:30 น. ตามเวลา Bangkok จะถูกบันทึกเป็น <strong>มาสาย</strong>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-            API ทดสอบได้โดยตรงผ่าน Swagger ที่พอร์ต 3001 โดยไม่ต้องพึ่งแดชบอร์ด
-          </div>
-        </div>
+        <ol className="relative grid gap-3 text-sm text-stone-300">
+          <li className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+            1) เข้าสู่ระบบด้วยบัญชีผู้ดูแล
+          </li>
+          <li className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+            2) ดูภาพรวมวันนี้ แล้วเลือกนักเรียนที่ยังไม่เช็คชื่อ
+          </li>
+          <li className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+            3) บันทึกเช็คชื่อ — หลัง 08:30 น. ตามเวลา กรุงเทพฯ = มาสาย
+          </li>
+        </ol>
       </section>
 
       <section className="grid place-items-center px-5 py-10">
@@ -45,14 +59,19 @@ export default async function LoginPage() {
               NextSchool
             </p>
             <p className="mt-2 text-2xl font-bold text-text-primary">
-              Attendance <span className="text-primary">Operations</span>
+              ระบบบริหาร <span className="text-primary">การเข้าเรียน</span>
             </p>
           </div>
           <div className="surface-card p-7 md:p-8">
             <h2 className="text-2xl font-bold text-text-primary">เข้าสู่ระบบ</h2>
             <p className="mt-2 text-sm text-text-secondary">
-              จัดการสรุปการเข้าเรียนและบันทึกเช็คชื่อประจำวัน
+              เริ่มจากภาพรวม แล้วไปเช็คชื่อได้ในไม่กี่ขั้นตอน
             </p>
+            {notice && (
+              <p className="mt-4 rounded-xl border border-border bg-surface-muted px-3 py-2 text-sm text-text-secondary">
+                {notice}
+              </p>
+            )}
             <div className="mt-7">
               <LoginForm />
             </div>

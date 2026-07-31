@@ -10,8 +10,8 @@ const notoThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: 'Attendance Operations | คอนโซลบริหารการเข้าเรียน',
-  description: 'ระบบบริหารการเช็คชื่อนักเรียนสำหรับผู้ดูแลโรงเรียน',
+  title: 'ระบบบริหารการเข้าเรียน | NextSchool',
+  description: 'คอนโซลผู้ดูแลสำหรับดูสรุปและบันทึกการเช็คชื่อนักเรียน',
 };
 
 export default function RootLayout({

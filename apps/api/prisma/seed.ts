@@ -6,74 +6,96 @@ const prisma = new PrismaClient();
 
 const BANGKOK = 'Asia/Bangkok';
 
-const STUDENTS: Array<{
+/**
+ * รหัสนักเรียน 10 หลัก: YYNNNN#####
+ * - YY = ปี พ.ศ. 2 หลักท้าย (เช่น 2569 → 69)
+ * - ######## = ลำดับรันนิ่ง 8 หลัก
+ */
+function studentCode(beYearShort: number, running: number): string {
+  if (beYearShort < 0 || beYearShort > 99) {
+    throw new Error(`Invalid BE year short: ${beYearShort}`);
+  }
+  if (running < 1 || running > 99_999_999) {
+    throw new Error(`Invalid running number: ${running}`);
+  }
+  return `${String(beYearShort).padStart(2, '0')}${String(running).padStart(8, '0')}`;
+}
+
+type SeedStudent = {
   studentCode: string;
   firstName: string;
   lastName: string;
   status: StudentStatus;
-}> = [
-  { studentCode: 'NS0001', firstName: 'Somchai', lastName: 'Suksan', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0002', firstName: 'Suda', lastName: 'Chaiyo', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0003', firstName: 'Anan', lastName: 'Wongsa', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0004', firstName: 'Nattapong', lastName: 'Keaw', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0005', firstName: 'Pimchanok', lastName: 'Siri', status: StudentStatus.ACTIVE },
-  {
-    studentCode: 'NS0006',
-    firstName: 'Kittisak',
-    lastName: 'Prasert',
-    status: StudentStatus.ACTIVE,
-  },
-  { studentCode: 'NS0007', firstName: 'Emily', lastName: 'Carter', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0008', firstName: 'Daniel', lastName: 'Nguyen', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0009', firstName: 'Aisha', lastName: 'Rahman', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0010', firstName: 'Hiroshi', lastName: 'Tanaka', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0011', firstName: 'Malee', lastName: 'Phan', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0012', firstName: 'Worawut', lastName: 'Dee', status: StudentStatus.ACTIVE },
-  {
-    studentCode: 'NS0013',
-    firstName: 'Chayanit',
-    lastName: 'Boonsri',
-    status: StudentStatus.ACTIVE,
-  },
-  { studentCode: 'NS0014', firstName: 'Oliver', lastName: 'Brooks', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0015', firstName: 'Sofia', lastName: 'Martinez', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0016', firstName: 'Thanakorn', lastName: 'Rit', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0017', firstName: 'Nicha', lastName: 'Arun', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0018', firstName: 'James', lastName: 'Patel', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0019', firstName: 'Ratchanok', lastName: 'Lim', status: StudentStatus.ACTIVE },
-  { studentCode: 'NS0020', firstName: 'Arthit', lastName: 'Sombat', status: StudentStatus.ACTIVE },
-  {
-    studentCode: 'NS0021',
-    firstName: 'Patcharin',
-    lastName: 'Yim',
-    status: StudentStatus.INACTIVE,
-  },
-  {
-    studentCode: 'NS0022',
-    firstName: 'Lucas',
-    lastName: 'Andersen',
-    status: StudentStatus.INACTIVE,
-  },
-  { studentCode: 'NS0023', firstName: 'Mina', lastName: 'Choi', status: StudentStatus.INACTIVE },
-  { studentCode: 'NS0024', firstName: 'Surasak', lastName: 'Tong', status: StudentStatus.INACTIVE },
+};
+
+function cohort(
+  beYearShort: number,
+  rows: Array<{ running: number; firstName: string; lastName: string; status?: StudentStatus }>,
+): SeedStudent[] {
+  return rows.map((row) => ({
+    studentCode: studentCode(beYearShort, row.running),
+    firstName: row.firstName,
+    lastName: row.lastName,
+    status: row.status ?? StudentStatus.ACTIVE,
+  }));
+}
+
+/** ปีการศึกษาปัจจุบัน พ.ศ. 2569 และรุ่นก่อนหน้า เพื่อสาธิตค้นหาหลายปี */
+const STUDENTS: SeedStudent[] = [
+  // —— ปี 69 (พ.ศ. 2569) ——
+  ...cohort(69, [
+    { running: 1, firstName: 'Somchai', lastName: 'Suksan' },
+    { running: 2, firstName: 'Suda', lastName: 'Chaiyo' },
+    { running: 3, firstName: 'Anan', lastName: 'Wongsa' },
+    { running: 4, firstName: 'Nattapong', lastName: 'Keaw' },
+    { running: 5, firstName: 'Pimchanok', lastName: 'Siri' },
+    { running: 6, firstName: 'Kittisak', lastName: 'Prasert' },
+    { running: 7, firstName: 'Emily', lastName: 'Carter' },
+    { running: 8, firstName: 'Daniel', lastName: 'Nguyen' },
+    { running: 9, firstName: 'Aisha', lastName: 'Rahman' },
+    { running: 10, firstName: 'Hiroshi', lastName: 'Tanaka' },
+    { running: 11, firstName: 'Malee', lastName: 'Phan' },
+    { running: 12, firstName: 'Worawut', lastName: 'Dee' },
+    { running: 13, firstName: 'Chayanit', lastName: 'Boonsri' },
+    { running: 14, firstName: 'Oliver', lastName: 'Brooks' },
+    { running: 15, firstName: 'Sofia', lastName: 'Martinez' },
+    { running: 16, firstName: 'Thanakorn', lastName: 'Rit' },
+    { running: 17, firstName: 'Nicha', lastName: 'Arun' },
+    { running: 18, firstName: 'James', lastName: 'Patel' },
+    { running: 19, firstName: 'Ratchanok', lastName: 'Lim' },
+    { running: 20, firstName: 'Arthit', lastName: 'Sombat' },
+    { running: 21, firstName: 'Patcharin', lastName: 'Yim', status: StudentStatus.INACTIVE },
+    { running: 22, firstName: 'Lucas', lastName: 'Andersen', status: StudentStatus.INACTIVE },
+  ]),
+  // —— ปี 68 (พ.ศ. 2568) ——
+  ...cohort(68, [
+    { running: 1, firstName: 'Kanokwan', lastName: 'Saetang' },
+    { running: 2, firstName: 'Peerapat', lastName: 'Chai' },
+    { running: 3, firstName: 'Sirilak', lastName: 'Wong' },
+    { running: 4, firstName: 'Thanawat', lastName: 'Inthira' },
+    { running: 5, firstName: 'Busaba', lastName: 'Nil' },
+    { running: 6, firstName: 'Noppadol', lastName: 'Kaew' },
+    { running: 7, firstName: 'Jirawan', lastName: 'Petch' },
+    { running: 8, firstName: 'Methee', lastName: 'Sook', status: StudentStatus.INACTIVE },
+  ]),
+  // —— ปี 67 (พ.ศ. 2567) ——
+  ...cohort(67, [
+    { running: 1, firstName: 'Apinya', lastName: 'Roj' },
+    { running: 2, firstName: 'Chatchai', lastName: 'Bun' },
+    { running: 3, firstName: 'Darunee', lastName: 'Thong' },
+    { running: 4, firstName: 'Ekkachai', lastName: 'Manee' },
+    { running: 5, firstName: 'Fahsai', lastName: 'Orn', status: StudentStatus.INACTIVE },
+  ]),
 ];
 
-/** Deterministic demo attendance for current Bangkok date: NS0001-NS0012 PRESENT, NS0013-NS0015 LATE, NS0016-NS0020 absent. */
-const PRESENT_CODES = [
-  'NS0001',
-  'NS0002',
-  'NS0003',
-  'NS0004',
-  'NS0005',
-  'NS0006',
-  'NS0007',
-  'NS0008',
-  'NS0009',
-  'NS0010',
-  'NS0011',
-  'NS0012',
-];
-const LATE_CODES = ['NS0013', 'NS0014', 'NS0015'];
+/** Demo: ปี 69 ลำดับ 1–12 มาเรียน, 13–15 มาสาย, 16–20 ยังไม่เช็คชื่อ */
+const PRESENT_CODES = Array.from({ length: 12 }, (_, i) => studentCode(69, i + 1));
+const LATE_CODES = [13, 14, 15].map((n) => studentCode(69, n));
+const ABSENT_DEMO_CODES = [16, 17, 18, 19, 20].map((n) => studentCode(69, n));
+
+const DEMO_CHECK_IN = studentCode(69, 20);
+const DEMO_DUPLICATE = studentCode(69, 1);
+const DEMO_INACTIVE = studentCode(69, 21);
 
 async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash('Password123!', 10);
@@ -87,16 +109,12 @@ async function main(): Promise<void> {
     },
   });
 
+  // เคลียร์ข้อมูลนักเรียนเก่า (เช่น NS00xx) แล้วใส่รหัสรูปแบบใหม่ทั้งชุด
+  await prisma.attendance.deleteMany();
+  await prisma.student.deleteMany();
+
   for (const student of STUDENTS) {
-    await prisma.student.upsert({
-      where: { studentCode: student.studentCode },
-      update: {
-        firstName: student.firstName,
-        lastName: student.lastName,
-        status: student.status,
-      },
-      create: student,
-    });
+    await prisma.student.create({ data: student });
   }
 
   const bangkokToday = DateTime.now().setZone(BANGKOK).toISODate()!;
@@ -115,18 +133,8 @@ async function main(): Promise<void> {
 
   for (const code of PRESENT_CODES) {
     const student = await prisma.student.findUniqueOrThrow({ where: { studentCode: code } });
-    await prisma.attendance.upsert({
-      where: {
-        studentId_attendanceDate: {
-          studentId: student.id,
-          attendanceDate,
-        },
-      },
-      update: {
-        status: AttendanceStatus.PRESENT,
-        checkedInAt: presentAt,
-      },
-      create: {
+    await prisma.attendance.create({
+      data: {
         studentId: student.id,
         attendanceDate,
         checkedInAt: presentAt,
@@ -137,18 +145,8 @@ async function main(): Promise<void> {
 
   for (const code of LATE_CODES) {
     const student = await prisma.student.findUniqueOrThrow({ where: { studentCode: code } });
-    await prisma.attendance.upsert({
-      where: {
-        studentId_attendanceDate: {
-          studentId: student.id,
-          attendanceDate,
-        },
-      },
-      update: {
-        status: AttendanceStatus.LATE,
-        checkedInAt: lateAt,
-      },
-      create: {
+    await prisma.attendance.create({
+      data: {
         studentId: student.id,
         attendanceDate,
         checkedInAt: lateAt,
@@ -157,18 +155,19 @@ async function main(): Promise<void> {
     });
   }
 
-  // Ensure demo absent students have no attendance for today (idempotent cleanup for smoke resets).
-  const absentCodes = ['NS0016', 'NS0017', 'NS0018', 'NS0019', 'NS0020'];
-  for (const code of absentCodes) {
-    const student = await prisma.student.findUniqueOrThrow({ where: { studentCode: code } });
-    // Leave as-is except smoke may recreate; seed does not delete historical other dates.
-    void student;
-  }
+  // Ensure absent demo students have no row today (already true after deleteMany).
+  void ABSENT_DEMO_CODES;
 
   console.log('Seed completed.');
   console.log('Admin: admin@nextschool.local / Password123!');
-  console.log('Demo students: check-in NS0020 | duplicate NS0001 | inactive NS0021');
+  console.log(
+    `Student code format: YY######## (10 digits, BE year + running). Demo years: 69 / 68 / 67`,
+  );
+  console.log(
+    `Demo students: check-in ${DEMO_CHECK_IN} | duplicate ${DEMO_DUPLICATE} | inactive ${DEMO_INACTIVE}`,
+  );
   console.log(`Bangkok business date seeded: ${bangkokToday}`);
+  console.log(`Total students: ${STUDENTS.length}`);
 }
 
 main()

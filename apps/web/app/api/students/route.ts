@@ -11,7 +11,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: { message: error instanceof Error ? error.message : 'Unable to load students.' },
+        error: {
+          code: error instanceof ApiError ? error.code : undefined,
+          message: error instanceof Error ? error.message : 'โหลดรายชื่อนักเรียนไม่สำเร็จ',
+        },
       },
       { status },
     );

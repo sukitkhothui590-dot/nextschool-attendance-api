@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toThaiError } from '@/lib/i18n/th';
 
 const schema = z.object({
   email: z.string().email('กรุณากรอกอีเมลให้ถูกต้อง'),
@@ -37,10 +38,13 @@ export function LoginForm() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(values),
     });
-    const payload = (await response.json()) as { success: boolean; error?: { message: string } };
+    const payload = (await response.json()) as {
+      success: boolean;
+      error?: { code?: string; message?: string };
+    };
     if (!response.ok || !payload.success) {
       return setError('root', {
-        message: payload.error?.message ?? 'เข้าสู่ระบบไม่สำเร็จ',
+        message: toThaiError(payload.error, 'เข้าสู่ระบบไม่สำเร็จ'),
       });
     }
     router.replace('/dashboard');
@@ -87,7 +91,8 @@ export function LoginForm() {
 
       {process.env.NODE_ENV !== 'production' && (
         <p className="rounded-xl border border-border bg-surface-muted px-3 py-3 text-xs text-text-secondary">
-          บัญชีทดสอบ: <span className="font-medium text-text-primary">admin@nextschool.local</span> /{' '}
+          บัญชีทดสอบ:{' '}
+          <span className="font-medium text-text-primary">admin@nextschool.local</span> /{' '}
           <span className="font-medium text-text-primary">Password123!</span>
         </p>
       )}

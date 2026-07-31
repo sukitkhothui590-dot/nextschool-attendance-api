@@ -11,15 +11,21 @@
 - โครง modular monolith ของ NestJS
 - ร่าง Prisma schema / migration intent / seed
 - ตัวช่วยโดเมน timezone Bangkok และ classification PRESENT/LATE
-- Next.js BFF (HttpOnly cookie) และหน้าแดชบอร์ด
+- Next.js Reference Client + BFF (HttpOnly cookie) เพื่อพิสูจน์ API workflow / usability
 - สคริปต์ `npm run demo*` แบบข้ามแพลตฟอร์ม
 - ร่างเอกสาร README / DESIGN / DEMO ฉบับแรก
 
 ## 3) Prompt หรือแนวคิดที่มีประโยชน์ที่สุด
 
-ให้แดชบอร์ดเป็น **reference client ที่มีขอบเขตชัด**  
-แต่ REST API ของ NestJS ต้องทดสอบและเรียกใช้ได้โดยตรงผ่าน curl / Swagger เสมอ  
-ไม่ให้ฝั่งเว็บกลายเป็นจุดซ่อน backend
+วาง UI เป็น **Reference Client ที่ใช้พิสูจน์ API workflow และ API usability**  
+ไม่ใช่ฟีเจอร์เสริมเพื่อความสวย
+
+หลักการ:
+
+1. REST API ของ NestJS เป็นของหลัก — ต้องทดสอบและเรียกใช้ได้โดยตรงผ่าน curl / Swagger เสมอ
+2. Reference Client มีขอบเขตแคบ (login / สรุป / นักเรียน / เช็คชื่อ) เพื่อพิสูจน์ว่า contract ใช้งานจริงได้
+3. การมี UI จึงเป็นหลักฐานของ requirement analysis และ system design ไม่ใช่การทำเกินโจทย์แบบไร้เหตุผล
+4. ไม่ให้ฝั่งเว็บกลายเป็นจุดซ่อน backend หรือคัดลอกกฎธุรกิจ
 
 แนวนี้ช่วยกัน scope creep และคงจุดแข็งตามเกณฑ์โจทย์ (requirement analysis, design, explainability)
 

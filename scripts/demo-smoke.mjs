@@ -78,15 +78,15 @@ export async function runSmoke() {
   const students = await request(API, '/students?page=1&limit=10', { headers });
   await expectStatus('Authenticated students list', students, 200);
 
-  const checkIn = await findStudent(token, 'NS0020');
-  const duplicate = await findStudent(token, 'NS0001');
-  const inactive = await findStudent(token, 'NS0021');
+  const checkIn = await findStudent(token, '6900000020');
+  const duplicate = await findStudent(token, '6900000001');
+  const inactive = await findStudent(token, '6900000021');
 
   const env = await loadDemoEnv();
   const deleteSql =
     `DELETE FROM attendance USING students ` +
     `WHERE attendance."studentId" = students.id ` +
-    `AND students."studentCode" = 'NS0020' ` +
+    `AND students."studentCode" = '6900000020' ` +
     `AND attendance."attendanceDate" = ((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date);\n`;
   await runCompose(
     ['exec', '-T', 'postgres', 'psql', '-U', env.POSTGRES_USER, '-d', env.POSTGRES_DB],
@@ -94,7 +94,7 @@ export async function runSmoke() {
   );
 
   await expectStatus(
-    'Check-in NS0020',
+    'Check-in 6900000020',
     await request(API, '/attendance', {
       method: 'POST',
       headers,
@@ -103,7 +103,7 @@ export async function runSmoke() {
     201,
   );
   await expectStatus(
-    'Duplicate check-in NS0001',
+    'Duplicate check-in 6900000001',
     await request(API, '/attendance', {
       method: 'POST',
       headers,
@@ -112,7 +112,7 @@ export async function runSmoke() {
     409,
   );
   await expectStatus(
-    'Inactive student NS0021',
+    'Inactive student 6900000021',
     await request(API, '/attendance', {
       method: 'POST',
       headers,

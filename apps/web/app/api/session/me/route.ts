@@ -8,7 +8,7 @@ export async function GET() {
   if (!token) return NextResponse.json({ success: false }, { status: 401 });
   try {
     await apiFetch<Student[]>('/students?limit=1');
-    return NextResponse.json({ success: true, user: { email: 'Administrator' } });
+    return NextResponse.json({ success: true, user: { email: 'ผู้ดูแลระบบ' } });
   } catch (error) {
     const status = error instanceof ApiError ? error.status : 503;
     return NextResponse.json({ success: false }, { status });

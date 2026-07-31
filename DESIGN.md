@@ -51,11 +51,24 @@ Nest ช่วยบังคับขอบเขตชั้นงานให
 - raw SQL ซับซ้อนบางแบบทำยากกว่า
 - abstraction อาจซ่อนรายละเอียด DB บางจุด
 
-### Next.js แดชบอร์ด (reference client)
+### Next.js Reference Client
 
-API เป็นของหลักตามโจทย์  
-แดชบอร์ดมีเพื่อให้ reviewer ทดสอบ workflow โดยไม่พึ่ง Postman อย่างเดียว  
-และไม่แทนที่การเรียก REST โดยตรงผ่าน curl / Swagger
+**บทบาท:** Reference Client ที่ใช้พิสูจน์ **API workflow** และ **API usability**  
+ไม่ใช่ผลิตภัณฑ์ UI ที่เพิ่มเพื่อความสวย และไม่ใช่ของหลักตามโจทย์
+
+**เหตุผลที่คุ้มค่าในขอบเขต assignment**
+
+- พิสูจน์ว่า endpoint ที่ออกแบบครอบคลุมเส้นทางงานจริง: login → สรุป → ค้นหานักเรียน → เช็คชื่อ
+- เป็นหลักฐานว่า requirement analysis ถูกแปลงเป็น contract ที่มนุษย์ทดลองซ้ำได้ ไม่ใช่แค่ผ่านเทสอัตโนมัติ
+- ช่วยตรวจ usability ของ API (error ชัดไหม, สถานะอ่านง่ายไหม, กฎเวลาสื่อสารได้ไหม) โดยไม่บังคับให้ reviewer พึ่ง Postman อย่างเดียว
+- ยังคงให้เรียก NestJS REST โดยตรงผ่าน curl / Swagger ได้เต็มที่ — UI ไม่ซ่อน backend
+
+**ขอบเขตที่ตั้งใจตัด**
+
+- ไม่ทำ admin เต็มรูปแบบ / CRUD / รายงานซับซ้อน
+- BFF ไม่คัดลอกกฎธุรกิจ — กฎอยู่ที่ API เท่านั้น
+
+ดังนั้นการมี UI จึงเป็นการสนับสนุนการประเมิน **requirement analysis + system design** ไม่ใช่การทำเกินโจทย์แบบไร้เหตุผล
 
 ---
 
@@ -68,6 +81,17 @@ API เป็นของหลักตามโจทย์
 | `users` | ผู้ดูแลระบบสำหรับ login |
 | `students` | นักเรียน + สถานะ ACTIVE/INACTIVE |
 | `attendance` | บันทึกเช็คชื่อต่อวันธุรกิจ |
+
+### รหัสนักเรียน (`studentCode`)
+
+รูปแบบ seed / demo: **10 หลัก** `YY########`
+
+- `YY` = ปี พ.ศ. 2 หลักท้าย (เช่น พ.ศ. 2569 → `69`)
+- `########` = ลำดับรันนิ่ง 8 หลัก
+- ตัวอย่าง: `6900000020`, และมีข้อมูลรุ่นปี `68` / `67` ใน seed เพื่อให้ค้นหาข้ามปีได้
+
+เก็บเป็น `TEXT` ไม่บังคับ format ใน DB เพื่อให้ยืดหยุ่นกับระบบโรงเรียนจริง  
+แต่ seed ใช้รูปแบบนี้สม่ำเสมอทั้งชุด
 
 ### `attendanceDate` ใช้ PostgreSQL `DATE`
 
@@ -181,11 +205,12 @@ Route → Controller → Service → Repository → Prisma → PostgreSQL
 - Repository จัดการ query
 - ไม่ทำ generic base repository ที่ไม่มีคุณค่าจริง
 
-### แดชบอร์ด + BFF
+### Reference Client + BFF
 
 - Browser → Next.js BFF (HttpOnly cookie) → Nest API
 - curl/Swagger → Nest API โดยตรง
 - BFF ไม่คัดลอกกฎธุรกิจ
+- UI มีไว้พิสูจน์ workflow/usability ของ API ไม่ใช่แทนที่ API
 
 ### Envelope และ error code
 

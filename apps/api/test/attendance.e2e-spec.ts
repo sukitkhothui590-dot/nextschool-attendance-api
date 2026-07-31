@@ -95,7 +95,7 @@ describe('Attendance (e2e)', () => {
   it('allows exactly one winner under concurrent check-ins', async () => {
     const student = await prisma.student.create({
       data: {
-        studentCode: 'NS9900',
+        studentCode: '6999000001',
         firstName: 'Concurrent',
         lastName: 'Test',
         status: 'ACTIVE',
@@ -138,7 +138,7 @@ describe('Attendance (e2e)', () => {
 
     const presentStudent = await prisma.student.create({
       data: {
-        studentCode: 'NSB001',
+        studentCode: '6890000001',
         firstName: 'Boundary',
         lastName: 'Present',
         status: 'ACTIVE',
@@ -164,7 +164,7 @@ describe('Attendance (e2e)', () => {
 
     const lateStudent = await prisma.student.create({
       data: {
-        studentCode: 'NSB002',
+        studentCode: '6890000002',
         firstName: 'Boundary',
         lastName: 'Late',
         status: 'ACTIVE',

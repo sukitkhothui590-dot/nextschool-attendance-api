@@ -40,10 +40,10 @@ describe('Students (e2e)', () => {
 
   it('searches by studentCode, first name, and last name', async () => {
     const byCode = await request(http)
-      .get('/students?search=NS9001')
+      .get('/students?search=6990000001')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    expect(byCode.body.data[0].studentCode).toBe('NS9001');
+    expect(byCode.body.data[0].studentCode).toBe('6990000001');
 
     const byFirst = await request(http)
       .get('/students?search=Active')

@@ -9,7 +9,10 @@ export async function POST(request: NextRequest) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success)
     return NextResponse.json(
-      { success: false, error: { message: 'Select a valid student.' } },
+      {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'กรุณาเลือกนักเรียนให้ถูกต้อง' },
+      },
       { status: 400 },
     );
   try {
@@ -23,7 +26,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: { message: error instanceof Error ? error.message : 'Unable to check in student.' },
+        error: {
+          code: error instanceof ApiError ? error.code : undefined,
+          message: error instanceof Error ? error.message : 'บันทึกเช็คชื่อไม่สำเร็จ',
+        },
       },
       { status },
     );

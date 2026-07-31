@@ -1,10 +1,12 @@
 # NextSchool Attendance Operations
 
-ระบบ REST API และแดชบอร์ดบริหารการเช็คชื่อนักเรียน สำหรับงาน technical assignment  
+ระบบ REST API บริหารการเช็คชื่อนักเรียน สำหรับงาน technical assignment  
+พร้อม **Reference Client** (Next.js) ที่ใช้พิสูจน์ API workflow และ API usability  
 สร้างด้วย NestJS, Next.js, PostgreSQL, Prisma และ Docker
 
 > งานชิ้นนี้เป็น **production-minded technical-assignment implementation**  
-> มี REST API ที่ทดสอบแล้ว, reference client แบบโฟกัส, เอกสาร trade-off และแนวทางต่อยอดสู่ production  
+> ของหลักคือ REST API ที่ทดสอบแล้ว + เอกสาร trade-off  
+> Reference Client มีขอบเขตชัดเพื่อพิสูจน์ว่า API ใช้งานจริงได้ตาม workflow  
 > **ยังไม่ใช่ระบบ production-ready เต็มรูปแบบ**
 
 ## Quick Start
@@ -29,8 +31,8 @@ npm run demo
 
 | บริการ | URL |
 | --- | --- |
-| Dashboard | http://localhost:3000 |
-| API | http://localhost:3001 |
+| Reference Client | http://localhost:3000 |
+| API (ของหลัก) | http://localhost:3001 |
 | Swagger | http://localhost:3001/docs |
 | Health | http://localhost:3001/health |
 | Readiness | http://localhost:3001/ready |
@@ -42,9 +44,12 @@ npm run demo
 
 นักเรียนตัวอย่างสำหรับ demo:
 
-- เช็คชื่อสำเร็จ: `NS0020`
-- เช็คชื่อซ้ำ (409): `NS0001`
-- นักเรียนไม่ใช้งาน (422): `NS0021`
+รหัสรูปแบบ `YY########` (10 หลัก) — `YY` = ปี พ.ศ. 2 หลักท้าย (เช่น 2569 → `69`)  
+seed มีรุ่นปี `69` / `68` / `67`
+
+- เช็คชื่อสำเร็จ: `6900000020`
+- เช็คชื่อซ้ำ (409): `6900000001`
+- นักเรียนไม่ใช้งาน (422): `6900000021`
 
 ### หยุด / ดู log / รีเซ็ต
 
@@ -57,7 +62,18 @@ npm run demo:reset
 ```
 
 คำสั่ง `npm run demo` จะสร้างไฟล์ `.env.demo.local` จาก `.env.demo.example` (ครั้งแรกเท่านั้น)  
-จากนั้น build สแต็ก demo, migrate, seed, รัน smoke test และเปิดแดชบอร์ดเมื่อพร้อม
+จากนั้น build สแต็ก demo, migrate, seed, รัน smoke test และเปิด Reference Client เมื่อพร้อม
+
+### คู่มือทดสอบสำหรับคนที่จะเอาไปลอง
+
+ดูขั้นตอนเต็มใน **[TESTING.md](TESTING.md)** สรุปสั้น ๆ:
+
+1. เปิด Docker Desktop → `npm install` → `npm run demo`
+2. เข้า http://localhost:3000 ด้วย `admin@nextschool.local` / `Password123!`
+3. ลอง workflow: ภาพรวม → นักเรียน → เช็คชื่อ (`6900000020` สำเร็จ, `6900000001` ซ้ำ, `6900000021` ไม่ใช้งาน)
+4. เปิด http://localhost:3001/docs เพื่อเรียก REST API โดยตรง (ของหลักตามโจทย์)
+
+สคริปต์สาธิต 5 นาที: [DEMO.md](DEMO.md)
 
 ### วิธีส่งงาน (ตามโจทย์)
 
@@ -70,20 +86,31 @@ Repository นี้: https://github.com/sukitkhothui590-dot/nextschool-attendan
 
 ### สิ่งที่ทำ
 
-- REST API ตามโจทย์: login, students, attendance, attendance summary
+- REST API ตามโจทย์: login, students, attendance, attendance summary (**ของหลัก**)
 - กฎธุรกิจ Active-only, หนึ่งครั้งต่อวัน, Late หลัง 08:30 Bangkok
 - เอกสาร README / DESIGN / AI_USAGE
-- แดชบอร์ดอ้างอิงสำหรับสาธิต workflow
+- **Reference Client** (Next.js) สำหรับพิสูจน์ API workflow และ API usability — ไม่ใช่ฟีเจอร์เสริมเพื่อความสวย
 - ชุดทดสอบและ Swagger
+
+### ทำไมมี Reference Client
+
+โจทย์ให้ API เป็นของหลัก แต่การมี client ขอบเขตแคบช่วยพิสูจน์ว่า:
+
+1. endpoint ครอบคลุม workflow จริง (login → ดูสรุป → ค้นหานักเรียน → เช็คชื่อ)
+2. contract ของ API ใช้งานได้โดยมนุษย์ ไม่ใช่แค่ผ่าน unit test
+3. ข้อสมมติจาก requirement analysis (เวลา Bangkok, Active-only, หนึ่งวันต่อคน) สื่อสารและทดลองซ้ำได้
+
+ดังนั้น UI จึงเป็น **หลักฐานของการวิเคราะห์ requirement และการออกแบบระบบ**  
+ไม่ใช่การทำเกินโจทย์แบบไร้เหตุผล และ **ไม่แทนที่** การเรียก REST โดยตรงผ่าน curl / Swagger
 
 ### สิ่งที่ตั้งใจไม่ทำ
 
 - CRUD นักเรียน, หลายโรงเรียน, บทบาทซับซ้อน
 - parent app, QR, Excel/PDF export, realtime
 - refresh token rotation / OAuth / registration
+- ทำให้ Reference Client เป็นผลิตภัณฑ์ admin เต็มรูปแบบ
 
 รายละเอียดเหตุผลอยู่ใน [DESIGN.md](DESIGN.md)
-
 ## โครงสร้างโปรเจกต์
 
 ```text
@@ -93,7 +120,7 @@ nextschool-attendance-api/
 │   │   ├── prisma/          # schema, migrations, seed
 │   │   ├── src/             # auth, students, attendance, common
 │   │   └── test/            # e2e tests
-│   └── web/                 # Next.js dashboard + BFF routes
+│   └── web/                 # Reference Client (Next.js) + BFF — พิสูจน์ API workflow
 ├── scripts/                 # npm run demo* (cross-platform)
 ├── docker-compose.yml       # Postgres โหมดพัฒนา (host :5433)
 ├── docker-compose.demo.yml  # reviewer stack แบบครบ
@@ -111,7 +138,7 @@ nextschool-attendance-api/
 
 ```mermaid
 flowchart LR
-  Browser[Browser] --> Web[Next.js web app :3000]
+  Browser[Browser] --> Web[Reference Client :3000]
   Web -->|server-side INTERNAL_API_URL| API[NestJS API :3001]
   API --> Prisma[Prisma]
   Prisma --> DB[(PostgreSQL)]
@@ -119,9 +146,9 @@ flowchart LR
   Docs --> API
 ```
 
-- แดชบอร์ดใช้ BFF + คุกกี้ HttpOnly
+- Reference Client ใช้ BFF + คุกกี้ HttpOnly เพื่อเรียก API แบบปลอดภัย
 - `INTERNAL_API_URL` ใช้เฉพาะฝั่งเซิร์ฟเวอร์
-- reviewer เรียก API โดยตรงผ่าน curl / Swagger ได้เสมอ
+- reviewer เรียก API โดยตรงผ่าน curl / Swagger ได้เสมอ (ไม่พึ่ง UI)
 
 ## การออกแบบฐานข้อมูล
 
@@ -167,7 +194,7 @@ erDiagram
 | เจ้าของเวลาเช็คชื่อ | เซิร์ฟเวอร์เท่านั้น ไคลเอนต์ส่งได้แค่ `studentId` |
 | Absent | `ACTIVE − PRESENT − LATE` ไม่เก็บในตาราง |
 | Summary ย้อนหลัง | อิงสถานะ ACTIVE ปัจจุบัน เพราะโจทย์ไม่มีประวัติสถานะ |
-| แดชบอร์ด | เป็น reference client ไม่แทน API |
+| Reference Client | พิสูจน์ API workflow / usability — ไม่แทน API และไม่ใช่ฟีเจอร์เสริมเพื่อความสวย |
 | โหมด demo | ใช้ Docker แยกจากโหมดพัฒนา |
 
 ## API
@@ -236,9 +263,9 @@ curl -X POST http://localhost:3001/login \
 
 | นักเรียน | ผลที่คาดหวัง |
 | --- | --- |
-| `NS0020` | เช็คชื่อสำเร็จ (`201`) |
-| `NS0001` | ซ้ำ (`409`) |
-| `NS0021` | INACTIVE (`422`) |
+| `6900000020` | เช็คชื่อสำเร็จ (`201`) |
+| `6900000001` | ซ้ำ (`409`) |
+| `6900000021` | INACTIVE (`422`) |
 
 ## โหมดพัฒนา (สำหรับแก้โค้ด)
 
@@ -273,7 +300,7 @@ npm run build
 | เช็คชื่อ Active เท่านั้น | Attendance service | e2e 422 |
 | วันละครั้ง | unique constraint | e2e 409 + concurrent |
 | Late หลัง 08:30 | domain + Clock | unit/e2e boundary |
-| Summary Present/Late/Absent | aggregate queries | e2e + dashboard |
+| Summary Present/Late/Absent | aggregate queries | e2e + Reference Client |
 | เอกสารและ trade-off | README/DESIGN/AI_USAGE | ตรวจด้วยตา + สัมภาษณ์ |
 
 ## แก้ปัญหาเบื้องต้น

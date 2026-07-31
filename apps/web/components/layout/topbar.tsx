@@ -3,17 +3,9 @@
 import { LogOut, Menu, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { TopbarClock } from '@/components/feedback/business-clock';
+import { useBangkokClock } from '@/hooks/use-bangkok-clock';
 import { Sidebar } from './sidebar';
-
-function bangkokDateLabel() {
-  return new Intl.DateTimeFormat('th-TH', {
-    timeZone: 'Asia/Bangkok',
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date());
-}
 
 const titles: Record<string, string> = {
   '/dashboard': 'ภาพรวมประจำวัน',
@@ -24,6 +16,7 @@ const titles: Record<string, string> = {
 export function Topbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const clock = useBangkokClock();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -35,7 +28,7 @@ export function Topbar() {
 
   async function logout() {
     await fetch('/api/session/logout', { method: 'POST' });
-    router.replace('/login');
+    router.replace('/login?message=signed-out');
     router.refresh();
   }
 
@@ -55,12 +48,15 @@ export function Topbar() {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-text-primary md:text-base">
-              {titles[pathname] ?? 'Attendance Operations'}
+              {titles[pathname] ?? 'ระบบบริหารการเข้าเรียน'}
             </p>
             <p className="truncate text-xs text-text-secondary">
-              วันธุรกิจ Bangkok · {bangkokDateLabel()}
+              วันธุรกิจกรุงเทพฯ · {clock.dateLabel}
+              <span className="sm:hidden"> · {clock.timeShort} น.</span>
             </p>
           </div>
+
+          <TopbarClock />
 
           <button
             type="button"
@@ -82,7 +78,7 @@ export function Topbar() {
             onClick={() => setOpen(false)}
           />
           <div className="relative flex h-full w-[min(20rem,88vw)] flex-col overflow-hidden bg-surface shadow-2xl">
-            <div className="absolute right-3 top-3 z-10">
+            <div className="absolute top-3 right-3 z-10">
               <button
                 type="button"
                 aria-label="ปิดเมนูนำทาง"

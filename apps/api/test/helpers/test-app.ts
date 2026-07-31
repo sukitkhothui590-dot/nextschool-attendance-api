@@ -71,7 +71,7 @@ export async function seedMinimalFixtures(prisma: PrismaClient): Promise<{
 
   const active = await prisma.student.create({
     data: {
-      studentCode: 'NS9001',
+      studentCode: '6990000001',
       firstName: 'Active',
       lastName: 'Student',
       status: StudentStatus.ACTIVE,
@@ -80,7 +80,7 @@ export async function seedMinimalFixtures(prisma: PrismaClient): Promise<{
 
   const inactive = await prisma.student.create({
     data: {
-      studentCode: 'NS9002',
+      studentCode: '6990000002',
       firstName: 'Inactive',
       lastName: 'Student',
       status: StudentStatus.INACTIVE,
@@ -89,7 +89,7 @@ export async function seedMinimalFixtures(prisma: PrismaClient): Promise<{
 
   const present = await prisma.student.create({
     data: {
-      studentCode: 'NS9003',
+      studentCode: '6990000003',
       firstName: 'Present',
       lastName: 'Already',
       status: StudentStatus.ACTIVE,
@@ -99,7 +99,7 @@ export async function seedMinimalFixtures(prisma: PrismaClient): Promise<{
   for (let i = 4; i <= 10; i += 1) {
     await prisma.student.create({
       data: {
-        studentCode: `NS900${i}`,
+        studentCode: `699000000${i}`,
         firstName: `Student${i}`,
         lastName: 'Demo',
         status: StudentStatus.ACTIVE,

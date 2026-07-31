@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Unable to load attendance summary.',
+          code: error instanceof ApiError ? error.code : undefined,
+          message: error instanceof Error ? error.message : 'โหลดสรุปการเข้าเรียนไม่สำเร็จ',
         },
       },
       { status },

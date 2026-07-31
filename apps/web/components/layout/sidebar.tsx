@@ -16,16 +16,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             NextSchool
           </p>
           <p className="mt-2 text-lg font-bold leading-tight text-text-primary">
-            Attendance
-            <span className="text-primary"> Operations</span>
+            ระบบบริหาร
+            <span className="text-primary"> การเข้าเรียน</span>
           </p>
-          <p className="mt-1 text-xs text-text-secondary">คอนโซลบริหารการเข้าเรียน</p>
+          <p className="mt-1 text-xs text-text-secondary">คอนโซลผู้ดูแลโรงเรียน</p>
         </Link>
       </div>
 
       <nav aria-label="เมนูหลัก" className="flex-1 space-y-1 p-3">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
+          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
           return (
             <Link
               key={href}
@@ -64,7 +64,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {DOCS_LINK.label}
         </a>
         <p className="mt-3 px-3 text-[11px] leading-relaxed text-text-secondary">
-          API เป็นแหล่งความจริงหลัก แดชบอร์ดนี้เป็น reference client สำหรับสาธิตเท่านั้น
+          API คือแหล่งความจริงหลัก แดชบอร์ดนี้ใช้สาธิตขั้นตอนการทำงานเท่านั้น
         </p>
       </div>
     </aside>

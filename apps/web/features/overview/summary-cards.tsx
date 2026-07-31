@@ -5,7 +5,7 @@ import type { AttendanceSummary } from '@/lib/api/types';
 export function SummaryCards({ summary }: { summary: AttendanceSummary }) {
   const items = [
     {
-      label: 'นักเรียน Active',
+      label: 'นักเรียนที่ใช้งานอยู่',
       value: summary.totalActiveStudents,
       icon: Users,
       tone: 'text-secondary',
@@ -18,7 +18,7 @@ export function SummaryCards({ summary }: { summary: AttendanceSummary }) {
       icon: UserCheck,
       tone: 'text-present',
       accent: 'bg-present',
-      hint: 'PRESENT',
+      hint: 'ไม่เกิน 08:30 น.',
     },
     {
       label: 'มาสาย',
@@ -26,7 +26,7 @@ export function SummaryCards({ summary }: { summary: AttendanceSummary }) {
       icon: Clock3,
       tone: 'text-late',
       accent: 'bg-late',
-      hint: 'LATE',
+      hint: 'หลัง 08:30 น.',
     },
     {
       label: 'ขาด',
@@ -34,7 +34,7 @@ export function SummaryCards({ summary }: { summary: AttendanceSummary }) {
       icon: UserX,
       tone: 'text-absent',
       accent: 'bg-absent',
-      hint: 'คำนวณจาก Active',
+      hint: 'คำนวณอัตโนมัติ',
     },
   ] as const;
 

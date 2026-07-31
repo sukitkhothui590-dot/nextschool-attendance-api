@@ -8,14 +8,18 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { statusLabel, toThaiError } from '@/lib/i18n/th';
 import type { ApiEnvelope, Student } from '@/lib/api/types';
 
 async function loadStudents(query: string) {
   const response = await fetch(`/api/students?${query}`);
-  if (response.status === 401) window.location.assign('/login');
+  if (response.status === 401) {
+    window.location.assign('/login?message=expired');
+    throw new Error('เซสชันหมดอายุ');
+  }
   const payload = (await response.json()) as ApiEnvelope<Student[]>;
   if (!response.ok || !payload.success) {
-    throw new Error(!payload.success ? payload.error.message : 'โหลดรายชื่อนักเรียนไม่สำเร็จ');
+    throw new Error(toThaiError(!payload.success ? payload.error : null, 'โหลดรายชื่อไม่สำเร็จ'));
   }
   return payload;
 }
@@ -35,10 +39,11 @@ export function StudentsTable() {
   }, [search]);
 
   useEffect(() => {
+    const current = params.get('search') ?? '';
+    if (current === debouncedSearch) return;
     const next = new URLSearchParams(params.toString());
     if (debouncedSearch) next.set('search', debouncedSearch);
     else next.delete('search');
-    if ((params.get('search') ?? '') === debouncedSearch) return;
     next.set('page', '1');
     router.replace(`${pathname}?${next}`);
   }, [debouncedSearch, pathname, router, params]);
@@ -73,7 +78,7 @@ export function StudentsTable() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="bg-surface pl-9"
-            placeholder="ค้นหาชื่อ หรือรหัส เช่น NS0020"
+            placeholder="ค้นหาชื่อ หรือรหัส เช่น 6900000020"
           />
         </label>
         <label>
@@ -84,8 +89,8 @@ export function StudentsTable() {
             className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm"
           >
             <option value="">ทุกสถานะ</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
+            <option value="ACTIVE">ใช้งานอยู่</option>
+            <option value="INACTIVE">ไม่ใช้งาน</option>
           </select>
         </label>
       </div>
@@ -93,23 +98,19 @@ export function StudentsTable() {
       {error ? (
         <div className="space-y-3 p-5">
           <p className="text-sm text-absent">{error.message}</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="text-sm font-semibold text-primary"
-          >
+          <button type="button" onClick={() => refetch()} className="text-sm font-semibold text-primary">
             ลองใหม่
           </button>
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="bg-surface-muted text-text-secondary">
               <tr>
                 <th className="px-5 py-3 font-medium">นักเรียน</th>
                 <th className="px-5 py-3 font-medium">รหัส</th>
                 <th className="px-5 py-3 font-medium">สถานะ</th>
-                <th className="px-5 py-3 font-medium">การทำงาน</th>
+                <th className="px-5 py-3 font-medium">ขั้นตอนถัดไป</th>
               </tr>
             </thead>
             <tbody>
@@ -132,16 +133,16 @@ export function StudentsTable() {
                     <td className="px-5 py-4 text-text-secondary">{student.studentCode}</td>
                     <td className="px-5 py-4">
                       <Badge tone={student.status === 'ACTIVE' ? 'success' : 'neutral'}>
-                        {student.status === 'ACTIVE' ? 'ใช้งานอยู่' : 'ไม่ใช้งาน'}
+                        {statusLabel(student.status)}
                       </Badge>
                     </td>
                     <td className="px-5 py-4">
                       {student.status === 'ACTIVE' ? (
                         <Link
-                          href={`/dashboard/check-in`}
-                          className="text-sm font-semibold text-primary hover:underline"
+                          href={`/dashboard/check-in?studentId=${student.id}`}
+                          className="inline-flex min-h-9 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-white hover:bg-primary-hover"
                         >
-                          ไปเช็คชื่อ
+                          เช็คชื่อคนนี้
                         </Link>
                       ) : (
                         <span className="text-xs text-text-secondary">เช็คชื่อไม่ได้</span>
