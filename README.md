@@ -1,17 +1,18 @@
 # NextSchool Attendance Operations
 
-Reviewer-ready attendance API and operations dashboard built with NestJS, Next.js, PostgreSQL, Prisma, and Docker.
+ระบบ REST API และแดชบอร์ดบริหารการเช็คชื่อนักเรียน สำหรับงาน technical assignment  
+สร้างด้วย NestJS, Next.js, PostgreSQL, Prisma และ Docker
 
 ## Quick Start
 
-### Requirements
+### สิ่งที่ต้องมี
 
 - Git
-- Node.js LTS (`>=20`; this environment used Node.js 24.18.0)
+- Node.js LTS (`>=20` — สภาพแวดล้อมพัฒนานี้ใช้ Node.js 24.18.0)
 - npm
 - Docker Desktop
 
-### Start the complete system
+### เริ่มระบบทั้งหมด
 
 ```bash
 git clone <repository-url>
@@ -20,27 +21,27 @@ npm install
 npm run demo
 ```
 
-After startup, the browser should open automatically when possible.
+เมื่อพร้อม ระบบจะพยายามเปิดเบราว์เซอร์ให้อัตโนมัติ
 
-| Service | URL |
+| บริการ | URL |
 | --- | --- |
 | Dashboard | http://localhost:3000 |
 | API | http://localhost:3001 |
 | Swagger | http://localhost:3001/docs |
 | Health | http://localhost:3001/health |
 
-Demo Login:
+บัญชีทดสอบ:
 
 - Email: `admin@nextschool.local`
 - Password: `Password123!`
 
-Useful demo students:
+นักเรียนตัวอย่างสำหรับ demo:
 
-- Successful check-in: `NS0020`
-- Duplicate check-in: `NS0001`
-- Inactive student: `NS0021`
+- เช็คชื่อสำเร็จ: `NS0020`
+- เช็คชื่อซ้ำ (409): `NS0001`
+- นักเรียนไม่ใช้งาน (422): `NS0021`
 
-### Stop / logs / reset
+### หยุด / ดู log / รีเซ็ต
 
 ```bash
 npm run demo:stop
@@ -50,9 +51,10 @@ npm run demo:smoke
 npm run demo:reset
 ```
 
-`npm run demo` creates `.env.demo.local` from `.env.demo.example` once, builds the isolated demo stack, migrates and seeds the database, runs smoke checks, and opens the dashboard when possible.
+คำสั่ง `npm run demo` จะสร้างไฟล์ `.env.demo.local` จาก `.env.demo.example` (ครั้งแรกเท่านั้น)  
+จากนั้น build สแต็ก demo ที่แยกจากโหมดพัฒนา, migrate, seed, รัน smoke test และเปิดแดชบอร์ดเมื่อพร้อม
 
-## Architecture
+## สถาปัตยกรรม
 
 ```mermaid
 flowchart LR
@@ -64,9 +66,10 @@ flowchart LR
   Docs --> API
 ```
 
-The web application uses a BFF-style server boundary and HttpOnly session cookies. `INTERNAL_API_URL` is server-only; no `NEXT_PUBLIC_*` API URL is exposed to the browser.
+เว็บใช้แนว BFF และเก็บ session ในคุกกี้แบบ HttpOnly  
+`INTERNAL_API_URL` ใช้เฉพาะฝั่งเซิร์ฟเวอร์ ไม่เปิดผ่าน `NEXT_PUBLIC_*` ให้เบราว์เซอร์เรียก API โดยตรงด้วย JWT ใน JavaScript
 
-## Data Model
+## โมเดลข้อมูล
 
 ```mermaid
 erDiagram
@@ -92,7 +95,7 @@ erDiagram
   STUDENT ||--o{ ATTENDANCE : has
 ```
 
-## Check-in Flow
+## ลำดับการเช็คชื่อ
 
 ```mermaid
 sequenceDiagram
@@ -110,56 +113,60 @@ sequenceDiagram
 
 ## API
 
-| Method | Path | Auth | Purpose |
+| Method | Path | Auth | หน้าที่ |
 | --- | --- | --- | --- |
-| POST | `/login` | No | Return JWT access token |
-| GET | `/health` | No | Liveness probe |
-| GET | `/ready` | No | Readiness probe with database check |
-| GET | `/students` | Bearer JWT | Search, filter, sort, and page students |
-| POST | `/attendance` | Bearer JWT | Check in one student |
-| GET | `/attendance/summary` | Bearer JWT | Attendance counts and rate |
-| GET | `/docs` | No | Interactive Swagger documentation |
+| POST | `/login` | ไม่ต้อง | ออก JWT access token |
+| GET | `/health` | ไม่ต้อง | ตรวจว่าโปรเซสยังทำงาน |
+| GET | `/ready` | ไม่ต้อง | ตรวจความพร้อม รวมการเชื่อมต่อฐานข้อมูล |
+| GET | `/students` | Bearer JWT | ค้นหา / กรอง / เรียง / แบ่งหน้า นักเรียน |
+| POST | `/attendance` | Bearer JWT | เช็คชื่อนักเรียน 1 คน |
+| GET | `/attendance/summary` | Bearer JWT | สรุปจำนวนและอัตราการเข้าเรียน |
+| GET | `/docs` | ไม่ต้อง | เอกสาร Swagger แบบโต้ตอบได้ |
 
-## Demo Scenarios
+## สถานการณ์ Demo
 
-| Student | Expected result |
+| นักเรียน | ผลที่คาดหวัง |
 | --- | --- |
-| `NS0020` | Successful check-in (`201`) |
-| `NS0001` | Already seeded today; duplicate check-in (`409`) |
-| `NS0021` | Inactive; check-in rejected (`422`) |
+| `NS0020` | เช็คชื่อสำเร็จ (`201`) |
+| `NS0001` | มีข้อมูลวันนี้แล้ว; เช็คซ้ำได้ `409` |
+| `NS0021` | สถานะ INACTIVE; ปฏิเสธด้วย `422` |
 
-The smoke command deletes today's Bangkok-date attendance for `NS0020` directly inside the isolated demo database before its success assertion. This keeps the success path repeatable without introducing a production reset API.
+คำสั่ง smoke จะลบ attendance ของ `NS0020` ในวันธุรกิจ Bangkok วันนี้ภายในฐานข้อมูล demo ก่อนทดสอบเคสสำเร็จ  
+เพื่อให้รันซ้ำได้โดยไม่ต้องสร้าง API สำหรับรีเซ็ตในระบบจริง
 
-## Business Rules
+## กฎทางธุรกิจ
 
-- Only authenticated users can read students or manage attendance.
-- A student must be `ACTIVE` to check in.
-- One attendance row is allowed per student per Bangkok business date; the rule is enforced by both application logic and a database unique constraint.
-- Attendance is classified as `PRESENT` or `LATE` using the Bangkok business clock.
-- Login attempts are rate limited; secrets and passwords are not logged.
+- ต้องยืนยันตัวตนก่อนอ่านนักเรียนหรือจัดการเช็คชื่อ
+- เฉพาะนักเรียน `ACTIVE` เท่านั้นที่เช็คชื่อได้
+- นักเรียนหนึ่งคนมี attendance ได้ไม่เกิน 1 แถวต่อวันธุรกิจ Bangkok  
+  บังคับทั้งในโค้ดแอปและ unique constraint ของฐานข้อมูล
+- สถานะ `PRESENT` / `LATE` คำนวณจากนาฬิกาฝั่งเซิร์ฟเวอร์ตามโซน `Asia/Bangkok`
+- Login มี rate limit; ไม่บันทึก password หรือ secret ลง log
 
-## Requirement Traceability
+## ตารางเชื่อมโยงความต้องการ
 
-| Requirement | Evidence |
+| ความต้องการ | หลักฐาน |
 | --- | --- |
-| Reviewer startup | `npm run demo`, `scripts/demo.mjs` |
-| Repeatable data | Prisma migration/seed plus `demo:reset` |
-| API safety | Nest validation, JWT guard, Helmet, rate limiting |
-| Demo verification | `scripts/demo-smoke.mjs` checks all requested paths |
-| Web/API separation | `INTERNAL_API_URL` and HttpOnly BFF cookies |
-| Local developer database | `docker-compose.yml` remains on host port `5433` |
+| ให้ reviewer เริ่มระบบได้ง่าย | `npm run demo`, `scripts/demo.mjs` |
+| ข้อมูลทำซ้ำได้ | Prisma migration/seed และ `demo:reset` |
+| ความปลอดภัยของ API | validation, JWT guard, Helmet, rate limiting |
+| ตรวจระบบอัตโนมัติ | `scripts/demo-smoke.mjs` |
+| แยกเว็บกับ API | `INTERNAL_API_URL` และคุกกี้ HttpOnly ผ่าน BFF |
+| ฐานข้อมูลโหมดพัฒนา | `docker-compose.yml` ใช้พอร์ตโฮสต์ `5433` |
 
-## Troubleshooting
+## แก้ปัญหาเบื้องต้น
 
-- **Docker daemon unavailable:** start Docker Desktop, then rerun `npm run demo`.
-- **Port 3000 or 3001 occupied:** stop the conflicting process or update the local demo ports. The doctor reports the conflict before starting containers.
-- **Windows PostgreSQL conflict:** developer-mode Postgres deliberately maps container port `5432` to host port `5433` in `docker-compose.yml`. Use `localhost:5433` for local developer database connections; a host Postgres on `5432` can otherwise produce misleading authentication failures.
-- **Fresh data needed:** run `npm run demo:reset`, confirm deletion, then `npm run demo`.
-- **Startup failed:** inspect container output with `npm run demo:logs`.
+- **Docker ไม่ทำงาน:** เปิด Docker Desktop แล้วรัน `npm run demo` อีกครั้ง
+- **พอร์ต 3000 หรือ 3001 ถูกใช้:** ปิดโปรเซสที่ชน หรือเปลี่ยนพอร์ตในไฟล์ demo  
+  ระบบ doctor จะแจ้งก่อนสร้างคอนเทนเนอร์
+- **ชนกับ PostgreSQL บน Windows:** โหมดพัฒนาแมปพอร์ตคอนเทนเนอร์ `5432` ไปโฮสต์ `5433`  
+  ให้เชื่อมต่อที่ `localhost:5433` หากโฮสต์มี Postgres ที่ `5432` อาจเจอ error ล็อกอินฐานข้อมูลที่ทำให้เข้าใจผิด
+- **ต้องการข้อมูลใหม่:** รัน `npm run demo:reset` ยืนยัน แล้วตามด้วย `npm run demo`
+- **เริ่มระบบไม่สำเร็จ:** ดู log ด้วย `npm run demo:logs`
 
-## Further Reading
+## อ่านเพิ่ม
 
-- [Design decisions](DESIGN.md)
-- [Five-minute reviewer walkthrough](DEMO.md)
-- [AI usage disclosure](AI_USAGE.md)
-- [Evaluation-only license](LICENSE)
+- [การตัดสินใจออกแบบ](DESIGN.md)
+- [สคริปต์สาธิต 5 นาที](DEMO.md)
+- [การเปิดเผยการใช้ AI](AI_USAGE.md)
+- [เงื่อนไขการใช้งานเพื่อประเมินผล](LICENSE)

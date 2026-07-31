@@ -1,33 +1,62 @@
-# Design Decisions
+# การตัดสินใจออกแบบ (DESIGN)
 
-## Deployment shape
+## รูปแบบการ deploy สำหรับ reviewer
 
-The reviewer stack uses four Compose services: Postgres, one-shot database initialization, API, and web. The initializer applies committed Prisma migrations and the deterministic seed before the API starts. This avoids application startup races and makes the stack inspectable.
+สแต็ก demo ใช้ 4 บริการใน Compose: Postgres, ขั้นตอนเตรียมฐานข้อมูลแบบ one-shot, API และเว็บ  
+ขั้นตอนเตรียมฐานข้อมูลจะรัน Prisma migrate ที่ commit ไว้แล้ว และ seed แบบ deterministic ก่อนให้ API เริ่มทำงาน  
+เพื่อลด race ตอนสตาร์ท และให้ตรวจสอบแต่ละขั้นได้ชัดเจน
 
-The existing `docker-compose.yml` is intentionally untouched for developer-mode Postgres on host port `5433`. `docker-compose.demo.yml` is a separate production-shaped reviewer stack with an internal-only Docker network; only web and API publish host ports.
+ไฟล์ `docker-compose.yml` คงไว้สำหรับโหมดพัฒนา โดย Postgres เปิดที่พอร์ตโฮสต์ `5433`  
+ส่วน `docker-compose.demo.yml` เป็นสแต็กแยกสำหรับ reviewer แนว production-shaped  
+เน็ตเวิร์กภายใน Docker เป็นหลัก และเปิดพอร์ตโฮสต์เฉพาะเว็บกับ API
 
-## Monorepo Docker builds
+## การ build Docker ใน monorepo
 
-Both Dockerfiles use Node 22 Alpine and workspace-aware `npm ci`. Package manifests are copied before source to preserve dependency-layer caching. The API build generates Prisma Client and compiles Nest; its runner stage contains production dependencies, compiled output, schema, and migrations under a non-root user.
+Dockerfile ทั้ง API และเว็บใช้ Node 22 Alpine และ `npm ci` แบบ workspace  
+คัดลอก package manifest ก่อนซอร์ส เพื่อให้ layer cache ของ dependency ทำงานดี  
+ฝั่ง API สร้าง Prisma Client แล้วคอมไพล์ Nest  
+stage runtime มีเฉพาะ dependency สำหรับ production, ไฟล์ที่คอมไพล์แล้ว, schema/migrations และรันด้วย non-root user
 
-The web build uses Next's `standalone` output. The runner copies only standalone server files, static assets, and public assets, then runs as a non-root user.
+ฝั่งเว็บใช้ Next.js แบบ `standalone`  
+runtime คัดลอกเฉพาะเซิร์ฟเวอร์ standalone, static assets และ public assets แล้วรันด้วย non-root user
 
-Trade-off: the Dockerfiles retain both workspace manifests because npm lockfile workspace resolution needs the monorepo layout. This is slightly more setup than isolated package locks but keeps one authoritative lockfile.
+**ข้อแลกเปลี่ยน:** Dockerfile ยังต้องมี workspace manifests ของทั้ง monorepo  
+เพราะ lockfile ต้องการโครงสร้าง workspace  
+ตั้งค่ายุ่งกว่าแยก lock ต่อแพ็กเกจเล็กน้อย แต่ได้ lockfile เดียวเป็นแหล่งความจริง
 
-## Security boundaries
+## ขอบเขตความปลอดภัย
 
-`INTERNAL_API_URL` is used only by the Next server and resolves to Docker service `api`. It is not a `NEXT_PUBLIC_*` value. Browser authentication uses the web BFF's HttpOnly cookie rather than exposing the API JWT to browser JavaScript.
+`INTERNAL_API_URL` ใช้เฉพาะ Next.js ฝั่งเซิร์ฟเวอร์ และชี้ไปที่ Docker service ชื่อ `api`  
+ไม่ใส่เป็น `NEXT_PUBLIC_*`  
+การยืนยันตัวตนของแดชบอร์ดใช้คุกกี้ HttpOnly ผ่าน BFF  
+ไม่ส่ง JWT ของ API ไปอยู่ใน JavaScript ของเบราว์เซอร์
 
-The API validates environment configuration, rejects short JWT secrets, uses Helmet, restrictive CORS, validation whitelisting, rate-limited login, JWT guards, and database constraints. The demo secret is explicitly local-only and must never be promoted to an environment with real users.
+API ตรวจค่าคอนฟิกตั้งแต่เริ่มต้น, ปฏิเสธ JWT secret ที่สั้นเกินไป, ใช้ Helmet, CORS แบบระบุ origin,  
+validation แบบ whitelist, rate limit ที่ login, JWT guard และ database constraints  
+ค่า secret ใน demo เป็นของ local เท่านั้น ห้ามนำไปใช้กับสภาพแวดล้อมที่มีผู้ใช้จริง
 
-## Attendance correctness
+## ความถูกต้องของการเช็คชื่อ
 
-The business date is Bangkok time. A unique database index on `(studentId, attendanceDate)` is the final safeguard against concurrent duplicate check-ins. The service checks first to produce a useful `409`, then also maps an insert-time unique conflict to that same result.
+วันธุรกิจใช้เวลา Bangkok (`Asia/Bangkok`)  
+unique index ที่ `(studentId, attendanceDate)` เป็นเกราะสุดท้ายกันเช็คชื่อซ้ำพร้อมกัน  
+เซอร์วิสเช็คล่วงหน้าเพื่อตอบ `409` ที่เข้าใจง่าย  
+และยัง map ความผิดพลาด unique ตอน insert ให้เป็นผลลัพธ์เดียวกัน
 
-The seed makes `NS0001` duplicate-ready, `NS0020` success-ready, and `NS0021` inactive. The smoke test removes only today's `NS0020` row inside the demo database before asserting `201`; no reset endpoint is added to the public API.
+Seed ทำให้:
 
-## Operational trade-offs
+- `NS0001` พร้อมสาธิตเคสซ้ำ
+- `NS0020` พร้อมสาธิตเคสสำเร็จ
+- `NS0021` เป็นนักเรียน INACTIVE
 
-- Demo data is persistent by default so a reviewer can inspect it. `demo:reset` requires confirmation before removing the named volume.
-- Health is a fast liveness probe; readiness verifies database connectivity.
-- The demo scripts use Node ESM and `child_process.spawn` argument arrays for Windows PowerShell, macOS, and Linux compatibility. Browser launch is best effort only.
+Smoke test จะลบเฉพาะแถววันนี้ของ `NS0020` ในฐานข้อมูล demo ก่อนตรวจ `201`  
+ไม่เพิ่ม endpoint รีเซ็ตเข้า public API
+
+## ข้อแลกเปลี่ยนด้านปฏิบัติการ
+
+- ข้อมูล demo คงอยู่เป็นค่าเริ่มต้น เพื่อให้ reviewer ตรวจต่อได้  
+  `demo:reset` ต้องยืนยันก่อนลบ volume ที่ตั้งชื่อไว้
+- `/health` เป็น liveness ที่ตอบเร็ว  
+  `/ready` ตรวจว่าฐานข้อมูลเชื่อมต่อได้
+- สคริปต์ demo ใช้ Node ESM และ `child_process.spawn` แบบส่งอาร์กิวเมนต์เป็น array  
+  เพื่อรองรับ Windows PowerShell, macOS และ Linux  
+  การเปิดเบราว์เซอร์เป็น best effort ไม่ทำให้สตาร์ททั้งระบบล้มเหลวหากเปิดไม่ได้
