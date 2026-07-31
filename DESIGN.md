@@ -1,62 +1,214 @@
 # การตัดสินใจออกแบบ (DESIGN)
 
-## รูปแบบการ deploy สำหรับ reviewer
+เอกสารนี้อธิบายการตัดสินใจสำคัญของงาน technical assignment  
+โฟกัสที่เหตุผล ข้อแลกเปลี่ยน และสิ่งที่ตั้งใจไม่ทำ
 
-สแต็ก demo ใช้ 4 บริการใน Compose: Postgres, ขั้นตอนเตรียมฐานข้อมูลแบบ one-shot, API และเว็บ  
-ขั้นตอนเตรียมฐานข้อมูลจะรัน Prisma migrate ที่ commit ไว้แล้ว และ seed แบบ deterministic ก่อนให้ API เริ่มทำงาน  
-เพื่อลด race ตอนสตาร์ท และให้ตรวจสอบแต่ละขั้นได้ชัดเจน
+---
 
-ไฟล์ `docker-compose.yml` คงไว้สำหรับโหมดพัฒนา โดย Postgres เปิดที่พอร์ตโฮสต์ `5433`  
-ส่วน `docker-compose.demo.yml` เป็นสแต็กแยกสำหรับ reviewer แนว production-shaped  
-เน็ตเวิร์กภายใน Docker เป็นหลัก และเปิดพอร์ตโฮสต์เฉพาะเว็บกับ API
+## 1) ทำไมเลือก NestJS + TypeScript + PostgreSQL + Prisma
 
-## การ build Docker ใน monorepo
+### NestJS (แทน Express เปล่า ๆ)
 
-Dockerfile ทั้ง API และเว็บใช้ Node 22 Alpine และ `npm ci` แบบ workspace  
-คัดลอก package manifest ก่อนซอร์ส เพื่อให้ layer cache ของ dependency ทำงานดี  
-ฝั่ง API สร้าง Prisma Client แล้วคอมไพล์ Nest  
-stage runtime มีเฉพาะ dependency สำหรับ production, ไฟล์ที่คอมไพล์แล้ว, schema/migrations และรันด้วย non-root user
+**เหตุผล**
 
-ฝั่งเว็บใช้ Next.js แบบ `standalone`  
-runtime คัดลอกเฉพาะเซิร์ฟเวอร์ standalone, static assets และ public assets แล้วรันด้วย non-root user
+- โครงสร้าง module / controller / service ชัด เหมาะกับโจทย์ที่มีหลาย use case
+- มี ValidationPipe, Guard, Exception Filter, Interceptor เป็นมาตรฐาน
+- Swagger รวมกับโค้ดได้โดยไม่ต้องดูแลสเปกแยกเองทั้งหมด
 
-**ข้อแลกเปลี่ยน:** Dockerfile ยังต้องมี workspace manifests ของทั้ง monorepo  
-เพราะ lockfile ต้องการโครงสร้าง workspace  
-ตั้งค่ายุ่งกว่าแยก lock ต่อแพ็กเกจเล็กน้อย แต่ได้ lockfile เดียวเป็นแหล่งความจริง
+**ข้อแลกเปลี่ยน**
 
-## ขอบเขตความปลอดภัย
+- boilerplate มากกว่า Express
+- learning curve สูงกว่าเล็กน้อย
 
-`INTERNAL_API_URL` ใช้เฉพาะ Next.js ฝั่งเซิร์ฟเวอร์ และชี้ไปที่ Docker service ชื่อ `api`  
-ไม่ใส่เป็น `NEXT_PUBLIC_*`  
-การยืนยันตัวตนของแดชบอร์ดใช้คุกกี้ HttpOnly ผ่าน BFF  
-ไม่ส่ง JWT ของ API ไปอยู่ใน JavaScript ของเบราว์เซอร์
+**ทำไมยังคุ้ม**
 
-API ตรวจค่าคอนฟิกตั้งแต่เริ่มต้น, ปฏิเสธ JWT secret ที่สั้นเกินไป, ใช้ Helmet, CORS แบบระบุ origin,  
-validation แบบ whitelist, rate limit ที่ login, JWT guard และ database constraints  
-ค่า secret ใน demo เป็นของ local เท่านั้น ห้ามนำไปใช้กับสภาพแวดล้อมที่มีผู้ใช้จริง
+โจทย์ประเมิน system design และ code quality  
+Nest ช่วยบังคับขอบเขตชั้นงานให้คงที่ แม้เวลาจำกัด
 
-## ความถูกต้องของการเช็คชื่อ
+### PostgreSQL (แทน SQLite / MongoDB)
 
-วันธุรกิจใช้เวลา Bangkok (`Asia/Bangkok`)  
-unique index ที่ `(studentId, attendanceDate)` เป็นเกราะสุดท้ายกันเช็คชื่อซ้ำพร้อมกัน  
-เซอร์วิสเช็คล่วงหน้าเพื่อตอบ `409` ที่เข้าใจง่าย  
-และยัง map ความผิดพลาด unique ตอน insert ให้เป็นผลลัพธ์เดียวกัน
+**เหตุผล**
 
-Seed ทำให้:
+- ต้องการ constraint จริง เช่น unique `(studentId, attendanceDate)`
+- มี native `DATE` และ `TIMESTAMPTZ`
+- ใกล้เคียงระบบโรงเรียนจริงมากกว่า
 
-- `NS0001` พร้อมสาธิตเคสซ้ำ
-- `NS0020` พร้อมสาธิตเคสสำเร็จ
-- `NS0021` เป็นนักเรียน INACTIVE
+**ข้อแลกเปลี่ยน**
 
-Smoke test จะลบเฉพาะแถววันนี้ของ `NS0020` ในฐานข้อมูล demo ก่อนตรวจ `201`  
-ไม่เพิ่ม endpoint รีเซ็ตเข้า public API
+- ต้องมี Docker/Postgres ในเครื่อง
+- setup ช้ากว่า SQLite
 
-## ข้อแลกเปลี่ยนด้านปฏิบัติการ
+### Prisma
 
-- ข้อมูล demo คงอยู่เป็นค่าเริ่มต้น เพื่อให้ reviewer ตรวจต่อได้  
-  `demo:reset` ต้องยืนยันก่อนลบ volume ที่ตั้งชื่อไว้
-- `/health` เป็น liveness ที่ตอบเร็ว  
-  `/ready` ตรวจว่าฐานข้อมูลเชื่อมต่อได้
-- สคริปต์ demo ใช้ Node ESM และ `child_process.spawn` แบบส่งอาร์กิวเมนต์เป็น array  
-  เพื่อรองรับ Windows PowerShell, macOS และ Linux  
-  การเปิดเบราว์เซอร์เป็น best effort ไม่ทำให้สตาร์ททั้งระบบล้มเหลวหากเปิดไม่ได้
+**เหตุผล**
+
+- migration และ schema เป็นโค้ดที่อ่านง่าย
+- type-safe query ลดความผิดพลาดตอนประกอบ response
+- seed ทำซ้ำได้ชัด
+
+**ข้อแลกเปลี่ยน**
+
+- raw SQL ซับซ้อนบางแบบทำยากกว่า
+- abstraction อาจซ่อนรายละเอียด DB บางจุด
+
+### Next.js แดชบอร์ด (reference client)
+
+API เป็นของหลักตามโจทย์  
+แดชบอร์ดมีเพื่อให้ reviewer ทดสอบ workflow โดยไม่พึ่ง Postman อย่างเดียว  
+และไม่แทนที่การเรียก REST โดยตรงผ่าน curl / Swagger
+
+---
+
+## 2) ทำไมออกแบบฐานข้อมูลแบบนี้
+
+### ตารางหลัก
+
+| ตาราง | หน้าที่ |
+| --- | --- |
+| `users` | ผู้ดูแลระบบสำหรับ login |
+| `students` | นักเรียน + สถานะ ACTIVE/INACTIVE |
+| `attendance` | บันทึกเช็คชื่อต่อวันธุรกิจ |
+
+### `attendanceDate` ใช้ PostgreSQL `DATE`
+
+- แทน “วันธุรกิจ Bangkok” ไม่ใช่ instant
+- ไม่ผูกกับ timezone ของเครื่อง developer
+- serialize เป็น `YYYY-MM-DD` ได้ตรง ๆ
+
+ทางเลือกที่ตัดออก:
+
+- string อิสระ → validate ยาก ไม่มี type safety ของปฏิทิน
+- `TIMESTAMP` เก็บ midnight → พังง่ายเมื่อ session timezone ต่างกัน
+
+### `checkedInAt` ใช้ `TIMESTAMPTZ`
+
+- เก็บเวลาจริงแบบ absolute instant
+- ใช้จัดประเภท PRESENT/LATE ได้แม้ deploy คนละโซน
+
+### Unique `(studentId, attendanceDate)`
+
+- เป็น authority สุดท้ายกันเช็คชื่อซ้ำ
+- รองรับ concurrent request ได้ดีกว่าเช็คในแอปอย่างเดียว
+- แอปเช็คล่วงหน้าเพื่อตอบ `409` ที่อ่านง่าย แล้วยัง map `P2002` เป็นโค้ดเดียวกัน
+
+### ไม่เก็บแถว ABSENT
+
+- Absent = `จำนวน ACTIVE − PRESENT − LATE`
+- ลดข้อมูลซ้ำ และไม่ต้องสร้างแถวทุกคนทุกวัน
+- ข้อจำกัด: สรุปอิงสถานะ ACTIVE ปัจจุบัน ไม่มีประวัติสถานะย้อนหลัง
+
+### Index ที่ใส่
+
+- `students(status)` สำหรับกรองและนับ ACTIVE
+- `attendance(attendanceDate, status)` สำหรับ summary แบบ aggregate
+
+ไม่ใส่ index เกินจำเป็น เพราะยังไม่มี query profile จริง
+
+---
+
+## 3) มีทางเลือกอื่นอะไรบ้าง แล้วทำไมไม่เลือก
+
+| ทางเลือก | ทำไมไม่เลือกในงานนี้ |
+| --- | --- |
+| Express เปล่า ๆ | เร็วตอนเริ่ม แต่โครงสร้างและ error contract ต้องสร้างเองเยอะ |
+| SQLite | setup ง่าย แต่ constraint/timezone/ops ใกล้ production น้อยกว่า |
+| MongoDB | document ยืดหยุ่น แต่กฎ “วันละครั้งต่อคน” กับ transaction/aggregate ไม่ชัดเท่า relational |
+| Microservices | over-engineering สำหรับ 4 endpoint |
+| Refresh token + RBAC เต็มระบบ | นอกขอบโจทย์ ทำให้โฟกัสหลุด |
+| Redis cache | ยังไม่มี bottleneck ที่วัดได้ |
+| เก็บ ABSENT เป็นแถว | ข้อมูลบวม และต้อง sync เมื่อจำนวนนักเรียนเปลี่ยน |
+| ให้ client ส่งเวลาเช็คชื่อเอง | โกง/คลาดเคลื่อนง่าย เซิร์ฟเวอร์ต้องเป็นเจ้าของเวลา |
+
+หลักที่ใช้ตัดสิน: **โฟกัสความถูกต้องของกฎธุรกิจ + อธิบายได้ในสัมภาษณ์**
+
+---
+
+## 4) ถ้ามีเวลาเพิ่ม จะปรับปรุงอะไรต่อ
+
+เรียงตามผลกระทบต่อคุณภาพระบบจริง:
+
+1. **ประวัติสถานะนักเรียน** (`StudentStatusHistory` / enrollment period)  
+   ให้ summary ย้อนหลังไม่เพี้ยนเมื่อนักเรียนถูกปิดใช้งานทีหลัง
+2. **CI** รัน typecheck + unit/e2e อัตโนมัติทุก PR
+3. **โครงสร้าง log/metrics** ที่ส่งเข้าระบบรวม (ยังไม่เต็ม tracing)
+4. **Keyset pagination** เมื่อรายชื่อนักเรียนโต
+5. **pg_trgm / full-text** ถ้า search แบบ contains ช้าลง
+6. **CSRF strategy** ที่เหมาะกับ topology การ deploy จริงของ BFF
+7. **Distributed rate limit** เมื่อมีหลาย instance
+
+สิ่งที่ตั้งใจยังไม่ทำแม้มีเวลาเล็กน้อย: ฟีเจอร์ผลิตภัณฑ์นอกโจทย์ (CRUD นักเรียน, parent app, QR, Excel)
+
+---
+
+## 5) ถ้าต้องรองรับผู้ใช้ราว 1 ล้านคน จะเปลี่ยนอะไร
+
+สมมติ “1 ล้าน” = โหลดสูงและข้อมูล attendance สะสมมาก ไม่ใช่แค่มี user ในตาราง
+
+| พื้นที่ | ทิศทาง |
+| --- | --- |
+| การเขียนเช็คชื่อ | คง unique constraint; พิจารณา queue/batch ตามรูปแบบการใช้งานจริง |
+| การอ่าน summary | pre-aggregate รายวัน หรือ materialized summary เมื่ออ่านบ่อยมาก |
+| Pagination | ย้ายจาก offset ไป keyset สำหรับหน้าลึก |
+| Search | เพิ่ม trigram/full-text และจำกัดรูปแบบค้นหา |
+| Auth | short-lived access token + refresh หมุนเวียน, แผน revoke ที่ชัด |
+| Deploy | แยก API หลาย instance, health/ready เดิมใช้ต่อได้, rate limit แบบกระจาย |
+| Observability | metrics (latency, 409 rate), tracing, alert จาก SLO |
+| ข้อมูลเก่า | partition ตาราง attendance ตามเดือน/ปี |
+
+จะยังไม่เริ่มจาก microservices  
+แยกบริการเมื่อมี bounded context และทีมที่รับผิดชอบชัด ไม่ใช่เพราะตัวเลขผู้ใช้เพียงอย่างเดียว
+
+---
+
+## การตัดสินใจสำคัญอื่น ๆ ที่เกี่ยวกับโจทย์
+
+### เวลาธุรกิจและสถานะเข้าเรียน
+
+- โซนธุรกิจ: `Asia/Bangkok`
+- `<= 08:30:00.000` = `PRESENT`
+- หลังนั้น = `LATE`
+- เวลาเช็คชื่อมาจาก `Clock` ของเซิร์ฟเวอร์เท่านั้น
+- เทสใช้ `FixedClock` ไม่แก้นาฬิกาเครื่อง
+
+### สถาปัตยกรรม modular monolith
+
+```
+Route → Controller → Service → Repository → Prisma → PostgreSQL
+```
+
+- Controller จัดการ HTTP
+- Service จัดการกฎธุรกิจ
+- Repository จัดการ query
+- ไม่ทำ generic base repository ที่ไม่มีคุณค่าจริง
+
+### แดชบอร์ด + BFF
+
+- Browser → Next.js BFF (HttpOnly cookie) → Nest API
+- curl/Swagger → Nest API โดยตรง
+- BFF ไม่คัดลอกกฎธุรกิจ
+
+### Envelope และ error code
+
+สำเร็จ:
+
+```json
+{ "success": true, "data": {} }
+```
+
+ผิดพลาด:
+
+```json
+{
+  "success": false,
+  "error": { "code": "ATTENDANCE_ALREADY_EXISTS", "message": "...", "details": null },
+  "requestId": "..."
+}
+```
+
+### Reviewer demo stack
+
+- `npm run demo` = production-shaped containers + migrate + seed + smoke
+- `docker-compose.yml` = Postgres สำหรับโหมดพัฒนา (พอร์ตโฮสต์ `5433`)
+- แยกกันเพื่อไม่ให้ reviewer ต้องรันคำสั่ง DB เอง
+
+รายละเอียด operational ของ demo/Docker เพิ่มเติมอยู่ใน README ส่วน Quick Start และ Troubleshooting

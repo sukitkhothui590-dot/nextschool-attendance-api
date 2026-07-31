@@ -3,6 +3,10 @@
 ระบบ REST API และแดชบอร์ดบริหารการเช็คชื่อนักเรียน สำหรับงาน technical assignment  
 สร้างด้วย NestJS, Next.js, PostgreSQL, Prisma และ Docker
 
+> งานชิ้นนี้เป็น **production-minded technical-assignment implementation**  
+> มี REST API ที่ทดสอบแล้ว, reference client แบบโฟกัส, เอกสาร trade-off และแนวทางต่อยอดสู่ production  
+> **ยังไม่ใช่ระบบ production-ready เต็มรูปแบบ**
+
 ## Quick Start
 
 ### สิ่งที่ต้องมี
@@ -15,8 +19,8 @@
 ### เริ่มระบบทั้งหมด
 
 ```bash
-git clone <repository-url>
-cd nextschool-attendance-operations
+git clone https://github.com/sukitkhothui590-dot/nextschool-attendance-api.git
+cd nextschool-attendance-api
 npm install
 npm run demo
 ```
@@ -29,6 +33,7 @@ npm run demo
 | API | http://localhost:3001 |
 | Swagger | http://localhost:3001/docs |
 | Health | http://localhost:3001/health |
+| Readiness | http://localhost:3001/ready |
 
 บัญชีทดสอบ:
 
@@ -52,7 +57,55 @@ npm run demo:reset
 ```
 
 คำสั่ง `npm run demo` จะสร้างไฟล์ `.env.demo.local` จาก `.env.demo.example` (ครั้งแรกเท่านั้น)  
-จากนั้น build สแต็ก demo ที่แยกจากโหมดพัฒนา, migrate, seed, รัน smoke test และเปิดแดชบอร์ดเมื่อพร้อม
+จากนั้น build สแต็ก demo, migrate, seed, รัน smoke test และเปิดแดชบอร์ดเมื่อพร้อม
+
+### วิธีส่งงาน (ตามโจทย์)
+
+1. Push โค้ดขึ้น GitHub
+2. ส่งลิงก์ repository ไปที่ `info@nextgensoft.co.th` ภายใน 3 วัน
+
+Repository นี้: https://github.com/sukitkhothui590-dot/nextschool-attendance-api
+
+## ขอบเขตงาน
+
+### สิ่งที่ทำ
+
+- REST API ตามโจทย์: login, students, attendance, attendance summary
+- กฎธุรกิจ Active-only, หนึ่งครั้งต่อวัน, Late หลัง 08:30 Bangkok
+- เอกสาร README / DESIGN / AI_USAGE
+- แดชบอร์ดอ้างอิงสำหรับสาธิต workflow
+- ชุดทดสอบและ Swagger
+
+### สิ่งที่ตั้งใจไม่ทำ
+
+- CRUD นักเรียน, หลายโรงเรียน, บทบาทซับซ้อน
+- parent app, QR, Excel/PDF export, realtime
+- refresh token rotation / OAuth / registration
+
+รายละเอียดเหตุผลอยู่ใน [DESIGN.md](DESIGN.md)
+
+## โครงสร้างโปรเจกต์
+
+```text
+nextschool-attendance-api/
+├── apps/
+│   ├── api/                 # NestJS REST API (ของหลัก)
+│   │   ├── prisma/          # schema, migrations, seed
+│   │   ├── src/             # auth, students, attendance, common
+│   │   └── test/            # e2e tests
+│   └── web/                 # Next.js dashboard + BFF routes
+├── scripts/                 # npm run demo* (cross-platform)
+├── docker-compose.yml       # Postgres โหมดพัฒนา (host :5433)
+├── docker-compose.demo.yml  # reviewer stack แบบครบ
+├── README.md
+├── DESIGN.md
+├── AI_USAGE.md
+└── DEMO.md
+```
+
+ทิศทาง dependency ของ API:
+
+`Controller → Service → Repository → Prisma → PostgreSQL`
 
 ## สถาปัตยกรรม
 
@@ -66,10 +119,11 @@ flowchart LR
   Docs --> API
 ```
 
-เว็บใช้แนว BFF และเก็บ session ในคุกกี้แบบ HttpOnly  
-`INTERNAL_API_URL` ใช้เฉพาะฝั่งเซิร์ฟเวอร์ ไม่เปิดผ่าน `NEXT_PUBLIC_*` ให้เบราว์เซอร์เรียก API โดยตรงด้วย JWT ใน JavaScript
+- แดชบอร์ดใช้ BFF + คุกกี้ HttpOnly
+- `INTERNAL_API_URL` ใช้เฉพาะฝั่งเซิร์ฟเวอร์
+- reviewer เรียก API โดยตรงผ่าน curl / Swagger ได้เสมอ
 
-## โมเดลข้อมูล
+## การออกแบบฐานข้อมูล
 
 ```mermaid
 erDiagram
@@ -95,78 +149,144 @@ erDiagram
   STUDENT ||--o{ ATTENDANCE : has
 ```
 
-## ลำดับการเช็คชื่อ
+สรุปสั้น ๆ:
 
-```mermaid
-sequenceDiagram
-  participant UI as Operator / API client
-  participant API as NestJS API
-  participant DB as PostgreSQL
-  UI->>API: POST /attendance (Bearer JWT, studentId)
-  API->>DB: Find student
-  DB-->>API: Student status
-  API->>API: Determine Bangkok business date and PRESENT/LATE
-  API->>DB: Create unique (studentId, attendanceDate)
-  DB-->>API: Attendance or unique conflict
-  API-->>UI: 201, 409 duplicate, or 422 inactive
-```
+- `attendanceDate` = `DATE` ของวันธุรกิจ Bangkok
+- `checkedInAt` = `TIMESTAMPTZ` ของเวลาจริง
+- unique `(studentId, attendanceDate)` กันเช็คชื่อซ้ำ
+- ไม่เก็บแถว Absent; คำนวณจากจำนวน ACTIVE
+
+รายละเอียด trade-off ดูใน [DESIGN.md](DESIGN.md)
+
+## Assumptions ที่ตัดสินใจเอง
+
+| หัวข้อ | Assumption |
+| --- | --- |
+| เวลาธุรกิจ | ใช้ `Asia/Bangkok` |
+| จุดตัดสาย | หลัง `08:30:00.000` = LATE, ตรง `08:30:00.000` = PRESENT |
+| เจ้าของเวลาเช็คชื่อ | เซิร์ฟเวอร์เท่านั้น ไคลเอนต์ส่งได้แค่ `studentId` |
+| Absent | `ACTIVE − PRESENT − LATE` ไม่เก็บในตาราง |
+| Summary ย้อนหลัง | อิงสถานะ ACTIVE ปัจจุบัน เพราะโจทย์ไม่มีประวัติสถานะ |
+| แดชบอร์ด | เป็น reference client ไม่แทน API |
+| โหมด demo | ใช้ Docker แยกจากโหมดพัฒนา |
 
 ## API
 
+เอกสารโต้ตอบได้ที่ http://localhost:3001/docs
+
 | Method | Path | Auth | หน้าที่ |
 | --- | --- | --- | --- |
-| POST | `/login` | ไม่ต้อง | ออก JWT access token |
-| GET | `/health` | ไม่ต้อง | ตรวจว่าโปรเซสยังทำงาน |
-| GET | `/ready` | ไม่ต้อง | ตรวจความพร้อม รวมการเชื่อมต่อฐานข้อมูล |
-| GET | `/students` | Bearer JWT | ค้นหา / กรอง / เรียง / แบ่งหน้า นักเรียน |
-| POST | `/attendance` | Bearer JWT | เช็คชื่อนักเรียน 1 คน |
-| GET | `/attendance/summary` | Bearer JWT | สรุปจำนวนและอัตราการเข้าเรียน |
-| GET | `/docs` | ไม่ต้อง | เอกสาร Swagger แบบโต้ตอบได้ |
+| POST | `/login` | ไม่ต้อง | ออก `access_token` |
+| GET | `/health` | ไม่ต้อง | liveness |
+| GET | `/ready` | ไม่ต้อง | readiness + DB |
+| GET | `/students` | JWT | ค้นหา / กรอง / เรียง / แบ่งหน้า |
+| POST | `/attendance` | JWT | เช็คชื่อ 1 คน |
+| GET | `/attendance/summary` | JWT | สรุป Present / Late / Absent |
+| GET | `/docs` | ไม่ต้อง | Swagger UI |
+
+### ตัวอย่าง login
+
+```bash
+curl -X POST http://localhost:3001/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"admin@nextschool.local\",\"password\":\"Password123!\"}"
+```
+
+### รูปแบบ response
+
+สำเร็จ:
+
+```json
+{ "success": true, "data": {} }
+```
+
+รายการพร้อม meta:
+
+```json
+{
+  "success": true,
+  "data": [],
+  "meta": { "page": 1, "limit": 20, "total": 24, "totalPages": 2 }
+}
+```
+
+ผิดพลาด:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "STUDENT_INACTIVE",
+    "message": "Only active students may check in.",
+    "details": null
+  },
+  "requestId": "..."
+}
+```
+
+## กฎทางธุรกิจ
+
+- เฉพาะนักเรียน `ACTIVE` เช็คชื่อได้
+- เช็คชื่อได้วันละ 1 ครั้งต่อคน ตามวันธุรกิจ Bangkok
+- หลัง 08:30 Bangkok = `LATE`
+- เซิร์ฟเวอร์เป็นผู้กำหนดเวลาเช็คชื่อ
+- login มี rate limit และไม่ log รหัสผ่าน/โทเคน
 
 ## สถานการณ์ Demo
 
 | นักเรียน | ผลที่คาดหวัง |
 | --- | --- |
 | `NS0020` | เช็คชื่อสำเร็จ (`201`) |
-| `NS0001` | มีข้อมูลวันนี้แล้ว; เช็คซ้ำได้ `409` |
-| `NS0021` | สถานะ INACTIVE; ปฏิเสธด้วย `422` |
+| `NS0001` | ซ้ำ (`409`) |
+| `NS0021` | INACTIVE (`422`) |
 
-คำสั่ง smoke จะลบ attendance ของ `NS0020` ในวันธุรกิจ Bangkok วันนี้ภายในฐานข้อมูล demo ก่อนทดสอบเคสสำเร็จ  
-เพื่อให้รันซ้ำได้โดยไม่ต้องสร้าง API สำหรับรีเซ็ตในระบบจริง
+## โหมดพัฒนา (สำหรับแก้โค้ด)
 
-## กฎทางธุรกิจ
+แยกจาก reviewer demo:
 
-- ต้องยืนยันตัวตนก่อนอ่านนักเรียนหรือจัดการเช็คชื่อ
-- เฉพาะนักเรียน `ACTIVE` เท่านั้นที่เช็คชื่อได้
-- นักเรียนหนึ่งคนมี attendance ได้ไม่เกิน 1 แถวต่อวันธุรกิจ Bangkok  
-  บังคับทั้งในโค้ดแอปและ unique constraint ของฐานข้อมูล
-- สถานะ `PRESENT` / `LATE` คำนวณจากนาฬิกาฝั่งเซิร์ฟเวอร์ตามโซน `Asia/Bangkok`
-- Login มี rate limit; ไม่บันทึก password หรือ secret ลง log
+```bash
+npm run db:up
+npm run db:migrate
+npm run db:seed
+npm run dev:api
+npm run dev:web
+```
+
+Postgres โหมดพัฒนาอยู่ที่ `localhost:5433`  
+(กันชนกับ PostgreSQL บน Windows ที่พอร์ต 5432)
+
+คำสั่งตรวจคุณภาพหลัก:
+
+```bash
+npm run typecheck
+npm run test
+npm run test:e2e
+npm run build
+```
 
 ## ตารางเชื่อมโยงความต้องการ
 
-| ความต้องการ | หลักฐาน |
-| --- | --- |
-| ให้ reviewer เริ่มระบบได้ง่าย | `npm run demo`, `scripts/demo.mjs` |
-| ข้อมูลทำซ้ำได้ | Prisma migration/seed และ `demo:reset` |
-| ความปลอดภัยของ API | validation, JWT guard, Helmet, rate limiting |
-| ตรวจระบบอัตโนมัติ | `scripts/demo-smoke.mjs` |
-| แยกเว็บกับ API | `INTERNAL_API_URL` และคุกกี้ HttpOnly ผ่าน BFF |
-| ฐานข้อมูลโหมดพัฒนา | `docker-compose.yml` ใช้พอร์ตโฮสต์ `5433` |
+| ความต้องการ | การทำ | วิธีตรวจ |
+| --- | --- | --- |
+| Login ได้ access token | Auth module | e2e + smoke |
+| ค้นหา/แบ่งหน้า/เรียง/กรองนักเรียน | Students module | e2e |
+| เช็คชื่อ Active เท่านั้น | Attendance service | e2e 422 |
+| วันละครั้ง | unique constraint | e2e 409 + concurrent |
+| Late หลัง 08:30 | domain + Clock | unit/e2e boundary |
+| Summary Present/Late/Absent | aggregate queries | e2e + dashboard |
+| เอกสารและ trade-off | README/DESIGN/AI_USAGE | ตรวจด้วยตา + สัมภาษณ์ |
 
 ## แก้ปัญหาเบื้องต้น
 
 - **Docker ไม่ทำงาน:** เปิด Docker Desktop แล้วรัน `npm run demo` อีกครั้ง
-- **พอร์ต 3000 หรือ 3001 ถูกใช้:** ปิดโปรเซสที่ชน หรือเปลี่ยนพอร์ตในไฟล์ demo  
-  ระบบ doctor จะแจ้งก่อนสร้างคอนเทนเนอร์
-- **ชนกับ PostgreSQL บน Windows:** โหมดพัฒนาแมปพอร์ตคอนเทนเนอร์ `5432` ไปโฮสต์ `5433`  
-  ให้เชื่อมต่อที่ `localhost:5433` หากโฮสต์มี Postgres ที่ `5432` อาจเจอ error ล็อกอินฐานข้อมูลที่ทำให้เข้าใจผิด
-- **ต้องการข้อมูลใหม่:** รัน `npm run demo:reset` ยืนยัน แล้วตามด้วย `npm run demo`
-- **เริ่มระบบไม่สำเร็จ:** ดู log ด้วย `npm run demo:logs`
+- **พอร์ต 3000/3001 ถูกใช้:** ปิดโปรเซสที่ชน หรือปรับพอร์ตใน `.env.demo.local`
+- **ชน Postgres บน Windows:** ใช้ `localhost:5433` ในโหมดพัฒนา
+- **อยากได้ข้อมูลใหม่:** `npm run demo:reset` แล้วตามด้วย `npm run demo`
+- **สตาร์ทไม่สำเร็จ:** `npm run demo:logs`
 
 ## อ่านเพิ่ม
 
-- [การตัดสินใจออกแบบ](DESIGN.md)
-- [สคริปต์สาธิต 5 นาที](DEMO.md)
-- [การเปิดเผยการใช้ AI](AI_USAGE.md)
-- [เงื่อนไขการใช้งานเพื่อประเมินผล](LICENSE)
+- [DESIGN.md](DESIGN.md) — เหตุผลการออกแบบและข้อแลกเปลี่ยน
+- [DEMO.md](DEMO.md) — สคริปต์สาธิต 5 นาที
+- [AI_USAGE.md](AI_USAGE.md) — การใช้ AI และการตรวจแก้
+- [LICENSE](LICENSE) — ใช้เพื่อประเมินผลเท่านั้น
