@@ -2,23 +2,13 @@ import { spawn } from 'node:child_process';
 
 const isWindows = process.platform === 'win32';
 
-function resolveCommand(command) {
-  if (!isWindows) {
-    return command;
-  }
-  if (command === 'npm') {
-    return 'npm.cmd';
-  }
-  if (command === 'npx') {
-    return 'npx.cmd';
-  }
-  return command;
-}
-
 export function run(command, args, { capture = false, stdio = 'inherit', input } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(resolveCommand(command), args, {
-      shell: false,
+    // Windows cannot spawn .cmd shims (npm/npx) without a shell.
+    const needsShell = isWindows && (command === 'npm' || command === 'npx');
+    const child = spawn(command, args, {
+      shell: needsShell,
+      windowsHide: true,
       stdio: input
         ? ['pipe', capture ? 'pipe' : 'inherit', capture ? 'pipe' : 'inherit']
         : capture
@@ -28,8 +18,12 @@ export function run(command, args, { capture = false, stdio = 'inherit', input }
     });
     let output = '';
     if (capture) {
-      child.stdout.on('data', (chunk) => (output += chunk));
-      child.stderr.on('data', (chunk) => (output += chunk));
+      child.stdout.on('data', (chunk) => {
+        output += chunk;
+      });
+      child.stderr.on('data', (chunk) => {
+        output += chunk;
+      });
     }
     if (input) {
       child.stdin.write(input);
