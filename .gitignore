@@ -53,6 +53,10 @@ temp/
 *.pem
 .turbo/
 
-# Cursor / local editor tooling
+# Local AI / IDE agent metadata (never commit)
 .cursor/
 .cursorignore
+.cursorrules
+.agent/
+.agents/
+AGENTS.md
