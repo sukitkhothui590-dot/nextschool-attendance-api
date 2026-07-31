@@ -4,31 +4,53 @@ Reviewer-ready attendance API and operations dashboard built with NestJS, Next.j
 
 ## Quick Start
 
-Requirements: Docker Desktop running, Docker Compose v2, Node.js `>=20` (the repository supports Node 24), and npm.
+### Requirements
+
+- Git
+- Node.js LTS (`>=20`; this environment used Node.js 24.18.0)
+- npm
+- Docker Desktop
+
+### Start the complete system
 
 ```bash
+git clone <repository-url>
+cd nextschool-attendance-operations
+npm install
 npm run demo
 ```
 
-The command creates `.env.demo.local` from `.env.demo.example` once, builds the isolated demo stack, migrates and seeds the database, runs smoke checks, and opens the dashboard when possible.
+After startup, the browser should open automatically when possible.
 
 | Service | URL |
 | --- | --- |
-| Operations dashboard | http://localhost:3000 |
+| Dashboard | http://localhost:3000 |
 | API | http://localhost:3001 |
-| Swagger API docs | http://localhost:3001/docs |
+| Swagger | http://localhost:3001/docs |
+| Health | http://localhost:3001/health |
 
-Demo administrator: `admin@nextschool.local` / `Password123!`
+Demo Login:
 
-Useful commands:
+- Email: `admin@nextschool.local`
+- Password: `Password123!`
+
+Useful demo students:
+
+- Successful check-in: `NS0020`
+- Duplicate check-in: `NS0001`
+- Inactive student: `NS0021`
+
+### Stop / logs / reset
 
 ```bash
-npm run demo:status
-npm run demo:logs
-npm run demo:smoke
 npm run demo:stop
-npm run demo:reset # deletes demo database data after confirmation
+npm run demo:logs
+npm run demo:status
+npm run demo:smoke
+npm run demo:reset
 ```
+
+`npm run demo` creates `.env.demo.local` from `.env.demo.example` once, builds the isolated demo stack, migrates and seeds the database, runs smoke checks, and opens the dashboard when possible.
 
 ## Architecture
 
