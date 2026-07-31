@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextschool-postgres-dev
+    restart: unless-stopped
+    ports:
+      - '${POSTGRES_PORT:-5433}:5432'
+    environment:
+      POSTGRES_USER: nextschool
+      POSTGRES_PASSWORD: nextschool
+      POSTGRES_DB: nextschool_attendance
+    volumes:
+      - nextschool_pg_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-test-db.sql:/docker-entrypoint-initdb.d/01-init-test-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nextschool -d nextschool_attendance']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nextschool_pg_data:
